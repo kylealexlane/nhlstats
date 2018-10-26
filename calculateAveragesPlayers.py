@@ -19,7 +19,7 @@ allPlayerIds = pd.read_sql_query(sql, con=engine)
 for index, row in allPlayerIds.iterrows():
     playerid = int(row['player1_id'])
     # Testing
-    playerid = 8471675
+    # playerid = 8471675
     #
     print(playerid, index)
 
@@ -54,14 +54,15 @@ for index, row in allPlayerIds.iterrows():
         ('18_19', '2018-10-02', '2019-04-07'),
         ('18_19_p', '2019-04-08', '2019-06-29')
     ]
-    results = {'names': [],
-               'numShots': [],
-               'predGoals': [],
-               'actGoals': [],
-               'actShootPerc': [],
-               'predShootPerc': [],
-               'shootSkill': []
+    results = {'year': [],
+               'num_shots': [],
+               'pred_goals': [],
+               'act_goals': [],
+               'act_shoot_perc': [],
+               'pred_shoot_perc': [],
+               'shoot_skill': []
                }
+    cols=['year', 'num_shots', 'pred_goals', 'act_goals', 'act_shoot_perc', 'pred_shoot_perc', 'shoot_skill']
     for name, start, end in segments:
         shots = allShots.loc[
             (allShots['game_date'] > start) & (allShots['game_date'] < end)].copy()
@@ -71,13 +72,21 @@ for index, row in allPlayerIds.iterrows():
         actShootPerc = actGoals / numShots if numShots != 0 else 0
         predShootPerc = predGoals / numShots if numShots != 0 else 0
         shootSkill = actShootPerc - predShootPerc
-        results['names'].append(name)
-        results['numShots'].append(numShots)
-        results['predGoals'].append(float(predGoals))
-        results['actGoals'].append(int(actGoals))
-        results['actShootPerc'].append(actShootPerc)
-        results['predShootPerc'].append(predShootPerc)
-        results['shootSkill'].append(shootSkill)
+        results['year'].append(name)
+        results['num_shots'].append(numShots)
+        results['pred_goals'].append(float(predGoals))
+        results['act_goals'].append(int(actGoals))
+        results['act_shoot_perc'].append(actShootPerc)
+        results['pred_shoot_perc'].append(predShootPerc)
+        results['shoot_skill'].append(shootSkill)
 
 
+    sql = """DELETE FROM nhlstats.yearly_shooter_summaries 
+                WHERE id = %s""" % playerid
+    connection = engine.connect()
+    connection.execute(sql)
+
+    shotResults = pd.DataFrame(data=results, columns=cols)
+    shotResults['id'] = playerid
+    shotResults.to_sql('yearly_shooter_summaries', schema='nhlstats', con=engine, if_exists='append', index=False)
 
