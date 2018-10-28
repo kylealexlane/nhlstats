@@ -26,6 +26,12 @@ CREATE TABLE nhlstats.adjusted_shots (
     player2_id           INT,
     player2_name     VARCHAR,
     player2_type          VARCHAR,
+    player3_id           INT,
+    player3_name     VARCHAR,
+    player3_type          VARCHAR,
+    player4_id           INT,
+    player4_name     VARCHAR,
+    player4_type          VARCHAR,
     event_type           VARCHAR,
     event_code           VARCHAR,
     event_type_id         VARCHAR,
@@ -43,9 +49,9 @@ CREATE TABLE nhlstats.adjusted_shots (
     deflected           INT,
     wrap_around         INT,
     none                INT,
-    dist                DOUBLE,
-    ang                 DOUBLE,
-    pred                DOUBLE,
+    dist                REAL,
+    ang                 REAL,
+    pred                REAL,
     PRIMARY KEY(game_id, event_idx, event_id)
 );
 

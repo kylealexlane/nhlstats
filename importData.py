@@ -24,10 +24,12 @@ import dateutil.parser
 # response = requests.get("https://statsapi.web.nhl.com/api/v1/game/"+str(baseYear)+"0"+str(gameType)+gameID+"/feed/live")
 # gameData = response.json()
 
+startDate = '1985-01-09'
+endDate = '1990-01-09'
 
 i = 0
 # Fetching from csv
-gamesList = pd.read_csv('gameslist-1985-01-09-1990-01-09.csv')
+gamesList = pd.read_csv('gameslist-{}-{}.csv'.format(startDate, endDate))
 for index, row in gamesList.iterrows():
     i += 1
     print(i)
@@ -79,7 +81,7 @@ for index, row in gamesList.iterrows():
     for index, play in enumerate(gameData['liveData']['plays']['allPlays']):
         cur.execute("""
             INSERT INTO nhlstats.allplays 
-            VALUES (%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s, %s, %s);
+            VALUES (%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s, %s, %s,%s, %s, %s);
             """,
                     (gamepk,
                      dateutil.parser.parse(dateTime),
@@ -103,6 +105,21 @@ for index, row in gamesList.iterrows():
                      play['players'][1]['player']['id'] if ('players' in play) & (len(play['players']) > 1 if 'players' in play else False) else None,
                      play['players'][1]['player']['fullName'] if ('players' in play) & (len(play['players']) > 1 if 'players' in play else False) else None,
                      play['players'][1]['playerType'] if ('players' in play) & (len(play['players']) > 1 if 'players' in play else False) else None,
+
+                     play['players'][2]['player']['id'] if ('players' in play) & (
+                         len(play['players']) > 2 if 'players' in play else False) else None,
+                     play['players'][2]['player']['fullName'] if ('players' in play) & (
+                         len(play['players']) > 2 if 'players' in play else False) else None,
+                     play['players'][2]['playerType'] if ('players' in play) & (
+                         len(play['players']) > 2 if 'players' in play else False) else None,
+
+                     play['players'][3]['player']['id'] if ('players' in play) & (
+                         len(play['players']) > 3 if 'players' in play else False) else None,
+                     play['players'][3]['player']['fullName'] if ('players' in play) & (
+                         len(play['players']) > 3 if 'players' in play else False) else None,
+                     play['players'][3]['playerType'] if ('players' in play) & (
+                         len(play['players']) > 3 if 'players' in play else False) else None,
+
                      play['result']['event'],
                      play['result']['eventCode'],
                      play['result']['eventTypeId'],

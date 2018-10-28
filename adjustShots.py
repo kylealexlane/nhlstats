@@ -9,14 +9,17 @@ pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
 pd.set_option('display.max_columns', 50)
 
+startDate = '2010-08-01'
+endDate = '2019-08-01'
+
 engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
 sql = """SELECT * from  nhlstats.allplays 
     WHERE (event_type = 'Shot' 
     OR event_type = 'Goal' 
     OR event_type ='Missed Shot') 
-    AND game_date >= '2010-09-21'
-    AND game_date < '2011-01-09'
-    """
+    AND game_date > '%s'
+    AND game_date < '%s'
+    """ % (startDate, endDate)
 
 allShots = pd.read_sql_query(sql, con=engine)
 
@@ -89,7 +92,7 @@ X = np.asarray(allShots[['dist',
 X_pp = loaded_scaled_factors.transform(X)
 np.argwhere(np.isnan(X_pp))
 
-
+print('making predictions...')
 predictions = loaded_model.predict_proba(X_pp)
 
 predictions_1 = predictions[:, 1]
@@ -100,5 +103,9 @@ allShots_predicted['pred'] = predictions_1
 allShots_predicted.head()
 
 engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
+
+connection = engine.connect()
+result = connection.execute("""DELETE FROM nhlstats.adjusted_shots WHERE game_date > '%s'
+    AND game_date < '%s'""" % (startDate, endDate))
 
 allShots.to_sql('adjusted_shots', schema = 'nhlstats', con=engine, if_exists='append', index=False)

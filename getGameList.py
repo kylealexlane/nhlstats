@@ -7,8 +7,8 @@ import dateutil.parser
 import os
 
 
-startDate = "1985-01-09"
-endDate = "1990-01-09"
+startDate = "2018-01-09"
+endDate = "2019-01-09"
 response = requests.get(
     "https://statsapi.web.nhl.com/api/v1/schedule?startDate="+startDate+"&endDate="+endDate)
 allData = response.json()
