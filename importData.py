@@ -4,6 +4,7 @@ import requests
 import psycopg2
 from datetime import datetime
 import dateutil.parser
+from ignore import hostname, username, password, database
 
 # Base numbers for testing
 # baseYear = 2016
@@ -23,9 +24,16 @@ import dateutil.parser
 # # For testing loop
 # response = requests.get("https://statsapi.web.nhl.com/api/v1/game/"+str(baseYear)+"0"+str(gameType)+gameID+"/feed/live")
 # gameData = response.json()
+# hostname = 'nhlstatsinstance.c6ihzpoxrual.us-east-2.rds.amazonaws.com'
+# username = 'nhlstats'
+# password = 'stats1029384756'
+# database = 'nhlstatsdb'
 
-startDate = '1985-01-09'
-endDate = '1990-01-09'
+myConnection = psycopg2.connect(host=hostname, user=username, password=password, dbname=database)
+cur = myConnection.cursor()
+
+startDate = '2017-01-09'
+endDate = '2018-01-09'
 
 i = 0
 # Fetching from csv
@@ -34,6 +42,11 @@ for index, row in gamesList.iterrows():
     i += 1
     print(i)
     print(row[1])
+
+    # Break to continue incomplete scripts
+    if i < 615:
+        continue
+
     gamePk = str(row[1])
     # If using gamePk
     response = requests.get("https://statsapi.web.nhl.com/api/v1/game/"+str(row[1])+"/feed/live")
@@ -62,22 +75,26 @@ for index, row in gamesList.iterrows():
     # homeId = gameData['gameData']['teams']['home']['id']
     # homeName = gameData['gameData']['teams']['home']['name']
 
+    # hostname = 'nhlstatsinstance.c6ihzpoxrual.us-east-2.rds.amazonaws.com'
+    # username = 'nhlstats'
+    # password = 'stats1029384756'
+    # database = 'nhlstatsdb'
 
-    hostname = 'localhost'
-    username = 'kylelane'
-    password = ''
-    database = 'kylelane'
+    # hostname = 'localhost'
+    # username = 'kylelane'
+    # password = ''
+    # database = 'kylelane'
 
-    myConnection = psycopg2.connect( host=hostname, user=username, password=password, dbname=database )
-    cur = myConnection.cursor()
+    # myConnection = psycopg2.connect( host=hostname, user=username, password=password, dbname=database )
+    # cur = myConnection.cursor()
 
     cur.execute('DELETE FROM nhlstats.allplays WHERE game_id = (%s) ;', (gamePk,))
     myConnection.commit()
-    cur.close()
-    myConnection.close()
+    # cur.close()
+    # myConnection.close()
 
-    myConnection = psycopg2.connect( host=hostname, user=username, password=password, dbname=database )
-    cur = myConnection.cursor()
+    # myConnection = psycopg2.connect( host=hostname, user=username, password=password, dbname=database )
+    # cur = myConnection.cursor()
     for index, play in enumerate(gameData['liveData']['plays']['allPlays']):
         cur.execute("""
             INSERT INTO nhlstats.allplays 
@@ -129,8 +146,8 @@ for index, row in gamesList.iterrows():
     # commit sql
     myConnection.commit()
     # Close communication with the database
-    cur.close()
-    myConnection.close()
+    # cur.close()
+    # myConnection.close()
 
 
 

@@ -6,12 +6,14 @@ from sqlalchemy import create_engine
 import pickle
 import requests
 import psycopg2
+from ignore import engine
 
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
 pd.set_option('display.max_columns', 50)
 
-engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
+# engine = create_engine('postgresql://nhlstats:stats1029384756@nhlstatsinstance.c6ihzpoxrual.us-east-2.rds.amazonaws.com:5432/nhlstatsdb')
+# engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
 sql = """SELECT DISTINCT(player1_id) FROM nhlstats.adjusted_shots"""
 
 allPlayerIds = pd.read_sql_query(sql, con=engine)

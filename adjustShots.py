@@ -4,6 +4,7 @@ from sklearn import preprocessing
 import os
 from sqlalchemy import create_engine
 import pickle
+from ignore import engine
 
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
@@ -12,7 +13,7 @@ pd.set_option('display.max_columns', 50)
 startDate = '2010-08-01'
 endDate = '2019-08-01'
 
-engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
+# engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
 sql = """SELECT * from  nhlstats.allplays 
     WHERE (event_type = 'Shot' 
     OR event_type = 'Goal' 
@@ -102,7 +103,7 @@ allShots_predicted['pred'] = predictions_1
 
 allShots_predicted.head()
 
-engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
+# engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
 
 connection = engine.connect()
 result = connection.execute("""DELETE FROM nhlstats.adjusted_shots WHERE game_date > '%s'

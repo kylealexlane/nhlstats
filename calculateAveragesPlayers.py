@@ -6,12 +6,13 @@ from sqlalchemy import create_engine
 import pickle
 import requests
 import psycopg2
+from ignore import engine
 
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
 pd.set_option('display.max_columns', 50)
 
-engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
+# engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
 sql = """SELECT DISTINCT(player1_id) FROM nhlstats.adjusted_shots"""
 
 allPlayerIds = pd.read_sql_query(sql, con=engine)
@@ -35,35 +36,37 @@ for index, row in allPlayerIds.iterrows():
     t_addedShootingSkill = t_actShootingPerc - t_predShootingPerc
 
     segments = [
-        ('10_11', '2010-10-06', '2011-04-11'),
-        ('10_11_p', '2011-04-12', '2011-06-16'),
-        ('11_12', '2011-10-05', '2012-04-08'),
-        ('11_12_p', '2012-04-10', '2012-06-12'),
-        ('12_13', '2013-01-18', '2013-04-29'),
-        ('12_13_p', '2013-04-29', '2013-06-25'),
-        ('13_14', '2013-09-30', '2014-04-14'),
-        ('13_14_p', '2014-04-15', '2014-06-14'),
-        ('14_15', '2014-10-07', '2015-04-12'),
-        ('14_15_p', '2015-04-14', '2015-06-16'),
-        ('15_16', '2015-10-06', '2016-04-11'),
-        ('15_16_p', '2016-04-12', '2016-06-13'),
-        ('16_17', '2016-10-11', '2017-04-10'),
-        ('16_17_p', '2017-04-11', '2017-06-12'),
-        ('17_18', '2017-10-03', '2018-04-09'),
-        ('17_18_p', '2018-04-10', '2018-06-08'),
-        ('18_19', '2018-10-02', '2019-04-07'),
-        ('18_19_p', '2019-04-08', '2019-06-29')
+        (2010, 2011, '2010-10-06', '2011-04-11', 0),
+        (2010, 2011, '2011-04-12', '2011-06-16', 1),
+        (2011, 2012, '2011-10-05', '2012-04-08', 0),
+        (2011, 2012, '2012-04-10', '2012-06-12', 1),
+        (2012, 2013, '2013-01-18', '2013-04-29', 0),
+        (2012, 2013, '2013-04-29', '2013-06-25', 1),
+        (2013, 2014, '2013-09-30', '2014-04-14', 0),
+        (2013, 2014, '2014-04-15', '2014-06-14', 1),
+        (2014, 2015, '2014-10-07', '2015-04-12', 0),
+        (2014, 2015, '2015-04-14', '2015-06-16', 1),
+        (2015, 2016, '2015-10-06', '2016-04-11', 0),
+        (2015, 2016, '2016-04-12', '2016-06-13', 1),
+        (2016, 2017, '2016-10-11', '2017-04-10', 0),
+        (2016, 2017, '2017-04-11', '2017-06-12', 1),
+        (2017, 2018, '2017-10-03', '2018-04-09', 0),
+        (2017, 2018, '2018-04-10', '2018-06-08', 1),
+        (2018, 2019, '2018-10-02', '2019-04-07', 0),
+        (2018, 2019, '2019-04-08', '2019-06-29', 1)
     ]
-    results = {'year': [],
+    results = {'year_start': [],
+               'year_end': [],
                'num_shots': [],
                'pred_goals': [],
                'act_goals': [],
                'act_shoot_perc': [],
                'pred_shoot_perc': [],
-               'shoot_skill': []
+               'shoot_skill': [],
+               'playoff': []
                }
-    cols=['year', 'num_shots', 'pred_goals', 'act_goals', 'act_shoot_perc', 'pred_shoot_perc', 'shoot_skill']
-    for name, start, end in segments:
+    cols=['year_start', 'year_end', 'num_shots', 'pred_goals', 'act_goals', 'act_shoot_perc', 'pred_shoot_perc', 'shoot_skill', 'playoff']
+    for yearstart, yearend, start, end, p in segments:
         shots = allShots.loc[
             (allShots['game_date'] > start) & (allShots['game_date'] < end)].copy()
         numShots = shots.shape[0]
@@ -72,13 +75,15 @@ for index, row in allPlayerIds.iterrows():
         actShootPerc = actGoals / numShots if numShots != 0 else 0
         predShootPerc = predGoals / numShots if numShots != 0 else 0
         shootSkill = actShootPerc - predShootPerc
-        results['year'].append(name)
+        results['year_start'].append(yearstart)
+        results['year_end'].append(yearend)
         results['num_shots'].append(numShots)
         results['pred_goals'].append(float(predGoals))
         results['act_goals'].append(int(actGoals))
         results['act_shoot_perc'].append(actShootPerc)
         results['pred_shoot_perc'].append(predShootPerc)
         results['shoot_skill'].append(shootSkill)
+        results['playoff'].append(p)
 
 
     sql = """DELETE FROM nhlstats.yearly_shooter_summaries 
