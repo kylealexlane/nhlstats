@@ -18,6 +18,9 @@ sql = """SELECT DISTINCT(player1_id) FROM nhlstats.adjusted_shots"""
 allPlayerIds = pd.read_sql_query(sql, con=engine)
 
 for index, row in allPlayerIds.iterrows():
+    if index < 609:
+        continue
+
     playerid = int(row['player1_id'])
     # Testing
     # playerid = 8471675

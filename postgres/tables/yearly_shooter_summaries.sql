@@ -1,10 +1,10 @@
 DROP TABLE IF EXISTS nhlstats.yearly_shooter_summaries;
 
 CREATE TABLE nhlstats.yearly_shooter_summaries (
-    id                            INT            NOT NULL,
-    year_start                    INT        NOT NULL,
-    year_end                      INT        NOT NULL,
-    playoff                       INT      NOT NULL,
+    id                            INT         NOT NULL,
+    year_start                    INT         NOT NULL,
+    year_end                      INT         NOT NULL,
+    playoff                       INT         NOT NULL,
     num_shots                     REAL,
     act_goals                     REAL,
     pred_goals                    REAL,

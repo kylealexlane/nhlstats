@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 import pickle
 import requests
 import psycopg2
-from ignore import engine
+from ignore import engine, hostname, username, password, database
 
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
@@ -14,26 +14,51 @@ pd.set_option('display.max_columns', 50)
 
 # engine = create_engine('postgresql://nhlstats:stats1029384756@nhlstatsinstance.c6ihzpoxrual.us-east-2.rds.amazonaws.com:5432/nhlstatsdb')
 # engine = create_engine('postgresql://kylelane@localhost:5432/kylelane')
-sql = """SELECT DISTINCT(player1_id) FROM nhlstats.adjusted_shots"""
+# sql = """SELECT DISTINCT(player1_id) FROM nhlstats.adjusted_shots"""
+#
+# allPlayerIds = pd.read_sql_query(sql, con=engine)
 
+
+sql = """SELECT DISTINCT(player2_id) FROM nhlstats.adjusted_shots"""
 allPlayerIds = pd.read_sql_query(sql, con=engine)
+allPlayerIds = allPlayerIds.rename(index=str, columns={"player2_id": "player_id"})
+
+sql = """SELECT DISTINCT(player1_id) FROM nhlstats.adjusted_shots"""
+allPlayerIds1 = pd.read_sql_query(sql, con=engine)
+allPlayerIds1 = allPlayerIds1.rename(index=str, columns={"player3_id": "player_id"})
+allPlayerIds = allPlayerIds.append(allPlayerIds1)
+
+sql = """SELECT DISTINCT(player3_id) FROM nhlstats.adjusted_shots"""
+allPlayerIds2 = pd.read_sql_query(sql, con=engine)
+allPlayerIds2 = allPlayerIds2.rename(index=str, columns={"player3_id": "player_id"})
+allPlayerIds = allPlayerIds.append(allPlayerIds2)
+
+sql = """SELECT DISTINCT(player4_id) FROM nhlstats.adjusted_shots"""
+allPlayerIds3 = pd.read_sql_query(sql, con=engine)
+allPlayerIds3 = allPlayerIds3.rename(index=str, columns={"player4_id": "player_id"})
+allPlayerIds = allPlayerIds.append(allPlayerIds3)
+
+allPlayerIds = allPlayerIds.drop_duplicates('player_id')
 
 for index, row in allPlayerIds.iterrows():
-    playerid = int(row['player1_id'])
+    playerid = int(row['player_id'])
     # Testing
     # playerid = 8477474
     #
     print(playerid, index)
+
+    # if playerid == 0 or int(index) < 1663:
+    #     #     continue
 
     response = requests.get("https://statsapi.web.nhl.com/api/v1/people/" + str(playerid))
     playerData = response.json()
 
 
 
-    hostname = 'localhost'
-    username = 'kylelane'
-    password = ''
-    database = 'kylelane'
+    # hostname = 'localhost'
+    # username = 'kylelane'
+    # password = ''
+    # database = 'kylelane'
 
     myConnection = psycopg2.connect(host=hostname, user=username, password=password, dbname=database)
     cur = myConnection.cursor()
