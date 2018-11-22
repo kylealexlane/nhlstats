@@ -24,16 +24,13 @@ from ignore import hostname, username, password, database
 # # For testing loop
 # response = requests.get("https://statsapi.web.nhl.com/api/v1/game/"+str(baseYear)+"0"+str(gameType)+gameID+"/feed/live")
 # gameData = response.json()
-# hostname = 'nhlstatsinstance.c6ihzpoxrual.us-east-2.rds.amazonaws.com'
-# username = 'nhlstats'
-# password = 'stats1029384756'
-# database = 'nhlstatsdb'
+
 
 myConnection = psycopg2.connect(host=hostname, user=username, password=password, dbname=database)
 cur = myConnection.cursor()
 
-startDate = '2017-01-09'
-endDate = '2018-01-09'
+startDate = '2018-01-09'
+endDate = '2019-01-09'
 
 i = 0
 # Fetching from csv
@@ -44,8 +41,8 @@ for index, row in gamesList.iterrows():
     print(row[1])
 
     # Break to continue incomplete scripts
-    if i < 615:
-        continue
+    # if i < 721:
+    #     continue
 
     gamePk = str(row[1])
     # If using gamePk
