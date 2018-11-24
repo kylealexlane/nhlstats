@@ -1,13 +1,6 @@
 import pandas as pd
-import numpy as np
-from sklearn import preprocessing
-import os
-from sqlalchemy import create_engine
-import pickle
-import requests
-import psycopg2
 import datetime
-from ignore import engine, hostname, username, password, database
+from production.ignore import engine
 
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
