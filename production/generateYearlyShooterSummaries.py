@@ -1,38 +1,82 @@
 import pandas as pd
-from production.ignore import engine
+from production.ignore import engine, dbString
 import sys
+from odo import odo
 
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
-pd.set_option('display.max_columns', 50)
+pd.set_option('display.max_columns', 150)
 
 def GenerateAndPushShooterSummaries(gameSeason):
 
+    ### TESTING ###
+    gameSeason = 'all'
+    ####
+
+    print('fetching data from adjusted shots...')
     # Either generate for all or generate based on specific season
     if gameSeason == "all":
         sql = """SELECT adjs.*, gd.game_type, gd.game_season FROM nhlstats.adjusted_shots AS adjs
             LEFT JOIN nhlstats.game_details AS gd ON gd.gamepk = adjs.game_id
-            WHERE gd.game_type = 'R' OR gd.game_type = 'P'"""
+            WHERE (gd.game_type = 'R' OR gd.game_type = 'P')
+            AND period_type != 'SHOOTOUT'"""
         allShots = pd.read_sql_query(sql, con=engine)
     else:
         sql = """SELECT adjs.*, gd.game_type, gd.game_season FROM nhlstats.adjusted_shots AS adjs
                     LEFT JOIN nhlstats.game_details AS gd ON gd.gamepk = adjs.game_id
                     WHERE (gd.game_type = 'R' OR gd.game_type = 'P')
-                    AND gd.game_season = %s""" % gameSeason
+                    AND gd.game_season = %s
+                    AND period_type != 'SHOOTOUT'""" % gameSeason
         allShots = pd.read_sql_query(sql, con=engine)
 
-    sql = """SELECT * FROM nhlstats.yearly_averages"""
+    num = allShots.size
+    allShotsFull = allShots.copy()
+    allShotsCopy = allShots.copy()
+
+    print('fetching yearly averages data...')
+    sql = """SELECT * FROM nhlstats.yearly_averages where month = 'year'"""
     yearlyAverages = pd.read_sql_query(sql, con=engine)
 
     def get_month(row):
         return row['game_date'].month
 
+    def goal_and_value(row, label):
+        return row[label] & row['goal_binary']
+
+    def pred_value(row, label):
+        if(row[label] == 1):
+            return row['pred']
+        else:
+            return 0
+
+    print('Calculating initial metrics and formatting...')
+    allShotsTempCopy = allShots.copy()
+    allShotsTempCopy['month'] = 'year'
     allShots['month'] = allShots.apply(lambda row: get_month(row), axis=1)
+
+    allShots = pd.concat([allShots, allShotsTempCopy])
+
+    allShots['wrist_shot_goal'] = allShots.apply(lambda row: goal_and_value(row, 'wrist_shot'), axis=1)
+    allShots['backhand_goal'] = allShots.apply(lambda row: goal_and_value(row, 'backhand'), axis=1)
+    allShots['slap_shot_goal'] = allShots.apply(lambda row: goal_and_value(row, 'slap_shot'), axis=1)
+    allShots['snap_shot_goal'] = allShots.apply(lambda row: goal_and_value(row, 'snap_shot'), axis=1)
+    allShots['tip_in_goal'] = allShots.apply(lambda row: goal_and_value(row, 'tip_in'), axis=1)
+    allShots['deflected_goal'] = allShots.apply(lambda row: goal_and_value(row, 'deflected'), axis=1)
+    allShots['wrap_around_goal'] = allShots.apply(lambda row: goal_and_value(row, 'wrap_around'), axis=1)
+
+    allShots['wrist_shot_pred'] = allShots.apply(lambda row: pred_value(row, 'wrist_shot'), axis=1)
+    allShots['backhand_pred'] = allShots.apply(lambda row: pred_value(row, 'backhand'), axis=1)
+    allShots['slap_shot_pred'] = allShots.apply(lambda row: pred_value(row, 'slap_shot'), axis=1)
+    allShots['snap_shot_pred'] = allShots.apply(lambda row: pred_value(row, 'snap_shot'), axis=1)
+    allShots['tip_in_pred'] = allShots.apply(lambda row: pred_value(row, 'tip_in'), axis=1)
+    allShots['deflected_pred'] = allShots.apply(lambda row: pred_value(row, 'deflected'), axis=1)
+    allShots['wrap_around_pred'] = allShots.apply(lambda row: pred_value(row, 'wrap_around'), axis=1)
 
     tempShots = allShots.copy()
 
-    allShots = allShots.groupby(['player1_id', 'game_season', 'month', 'game_type'])
+    shotsGrouped = tempShots.groupby(['player1_id', 'game_season', 'month', 'game_type'])
 
+    print('Calculating grouped metrics per player...')
     # Define the aggregation procedure outside of the groupby operation
     aggregations = {
         'goal_binary': 'sum',
@@ -43,25 +87,225 @@ def GenerateAndPushShooterSummaries(gameSeason):
         'tip_in': 'sum',
         'deflected': 'sum',
         'wrap_around': 'sum',
+
+        'wrist_shot_pred': 'sum',
+        'backhand_pred': 'sum',
+        'slap_shot_pred': 'sum',
+        'snap_shot_pred': 'sum',
+        'tip_in_pred': 'sum',
+        'deflected_pred': 'sum',
+        'wrap_around_pred': 'sum',
+
+        'wrist_shot_goal': 'sum',
+        'backhand_goal': 'sum',
+        'slap_shot_goal': 'sum',
+        'snap_shot_goal': 'sum',
+        'tip_in_goal': 'sum',
+        'deflected_goal': 'sum',
+        'wrap_around_goal': 'sum',
         'dist': 'mean',
         'ang': 'mean',
-        'pred': ['sum', 'count', 'std']
+        'pred': 'sum'
     }
 
-    metrics = allShots.agg(aggregations)
+    metrics = shotsGrouped.agg(aggregations)
 
-    tempMetrics = metrics.copy()
+    counts = shotsGrouped.agg({'pred': 'count'})
 
-    ranks = metrics.rank(pct=True)
+    metrics = metrics.merge(counts, on=['player1_id', 'game_season', 'month', 'game_type'], how='inner', suffixes=('', '_count'))
 
-    sql = """DELETE FROM nhlstats.yearly_shooter_summaries 
-                WHERE id = %s""" % playerid
+    def get_perc(row, label):
+        return (row[label] / row['pred_count'])
+
+    def get_pred_perc(row, label, label2):
+        if row[label2] == 0:
+            return 0
+        return (row[label] / row[label2])
+
+    def get_perc_specific(row, label, countLabel):
+        if row[countLabel] == 0:
+            return 0
+        return (row[label] / row[countLabel])
+
+    print('Calculating frequencies and percents...')
+    metrics.reset_index()
+    metrics['shooting_perc'] = metrics.apply(lambda row: get_perc(row, 'goal_binary'), axis=1)
+    metrics['wrist_shot_freq'] = metrics.apply(lambda row: get_perc(row, 'wrist_shot'), axis=1)
+    metrics['backhand_freq'] = metrics.apply(lambda row: get_perc(row, 'backhand'), axis=1)
+    metrics['slap_shot_freq'] = metrics.apply(lambda row: get_perc(row, 'slap_shot'), axis=1)
+    metrics['snap_shot_freq'] = metrics.apply(lambda row: get_perc(row, 'snap_shot'), axis=1)
+    metrics['tip_in_freq'] = metrics.apply(lambda row: get_perc(row, 'tip_in'), axis=1)
+    metrics['deflected_freq'] = metrics.apply(lambda row: get_perc(row, 'deflected'), axis=1)
+    metrics['wrap_around_freq'] = metrics.apply(lambda row: get_perc(row, 'wrap_around'), axis=1)
+
+    metrics['pred_shooting_perc'] = metrics.apply(lambda row: get_perc(row, 'pred'), axis=1)
+
+    metrics['pred_shooting_perc_wrist_shot'] = metrics.apply(lambda row: get_pred_perc(row, 'wrist_shot_pred', 'wrist_shot'), axis=1)
+    metrics['pred_shooting_perc_backhand'] = metrics.apply(lambda row: get_pred_perc(row, 'backhand_pred', 'backhand'), axis=1)
+    metrics['pred_shooting_perc_slap_shot'] = metrics.apply(lambda row: get_pred_perc(row, 'slap_shot_pred', 'slap_shot'), axis=1)
+    metrics['pred_shooting_perc_snap_shot'] = metrics.apply(lambda row: get_pred_perc(row, 'snap_shot_pred', 'snap_shot'), axis=1)
+    metrics['pred_shooting_perc_tip_in'] = metrics.apply(lambda row: get_pred_perc(row, 'tip_in_pred', 'tip_in'), axis=1)
+    metrics['pred_shooting_perc_deflected'] = metrics.apply(lambda row: get_pred_perc(row, 'deflected_pred', 'deflected'), axis=1)
+    metrics['pred_shooting_perc_wrap_around'] = metrics.apply(lambda row: get_pred_perc(row, 'wrap_around_pred', 'wrap_around'), axis=1)
+
+
+    metrics['wrist_shot_shooting_perc'] = metrics.apply(lambda row: get_perc_specific(row, 'wrist_shot_goal', 'wrist_shot'), axis=1)
+    metrics['backhand_shooting_perc'] = metrics.apply(lambda row: get_perc_specific(row, 'backhand_goal', 'backhand'), axis=1)
+    metrics['slap_shot_shooting_perc'] = metrics.apply(lambda row: get_perc_specific(row, 'slap_shot_goal', 'slap_shot'), axis=1)
+    metrics['snap_shot_shooting_perc'] = metrics.apply(lambda row: get_perc_specific(row, 'snap_shot_goal', 'snap_shot'), axis=1)
+    metrics['tip_in_shooting_perc'] = metrics.apply(lambda row: get_perc_specific(row, 'tip_in_goal', 'tip_in'), axis=1)
+    metrics['deflected_shooting_perc'] = metrics.apply(lambda row: get_perc_specific(row, 'deflected_goal', 'deflected'), axis=1)
+    metrics['wrap_around_shooting_perc'] = metrics.apply(lambda row: get_perc_specific(row, 'wrap_around_goal', 'wrap_around'), axis=1)
+
+
+
+    print('renaming and formatting...')
+    metrics = metrics.reset_index()
+    columns = {
+        'game_season': 'year_code',
+        'pred_count': 'num_shots',
+        'goal_binary': 'num_goals',
+        'pred': 'sum_xgoals',
+        'shooting_perc': 'avg_shoot_perc',
+        'pred_shooting_perc': 'avg_xgoals',
+
+        'pred_shooting_perc_wrist_shot': 'avg_xgoals_wrist_shot',
+        'pred_shooting_perc_backhand': 'avg_xgoals_backhand',
+        'pred_shooting_perc_slap_shot': 'avg_xgoals_slap_shot',
+        'pred_shooting_perc_snap_shot': 'avg_xgoals_snap_shot',
+        'pred_shooting_perc_tip_in': 'avg_xgoals_tip_in',
+        'pred_shooting_perc_deflected': 'avg_xgoals_deflected',
+        'pred_shooting_perc_wrap_around': 'avg_xgoals_wrap_around',
+
+        'wrist_shot': 'wrist_shot_num',
+        'backhand': 'backhand_num',
+        'slap_shot': 'slap_shot_num',
+        'snap_shot': 'snap_shot_num',
+        'tip_in': 'tip_in_num',
+        'deflected': 'deflected_num',
+        'wrap_around': 'wrap_around_num',
+        'dist': 'mean_dist',
+        'ang': 'mean_ang'
+    }
+
+    dropColumns = [
+        'wrist_shot_goal',
+        'backhand_goal',
+        'slap_shot_goal',
+        'snap_shot_goal',
+        'tip_in_goal',
+        'deflected_goal',
+        'wrap_around_goal',
+    ]
+
+    fomattedDf = metrics.rename(index=str, columns=columns)
+    fomattedDf = fomattedDf.drop(dropColumns, axis=1)
+
+    print('Joining with yearly averages and calculating metrics...')
+    withYearly = fomattedDf.merge(yearlyAverages, on=['year_code', 'game_type'], how='left', suffixes=('', '_ya'))
+
+
+    def compare_yearly_diff(row, label):
+        l2 = label + "_ya"
+        return (row[label] - row[l2])
+
+    def compare_yearly_relative(row, label):
+        l2 = label + "_ya"
+        return (row[label] / row[l2])
+
+    # Get metrics vs yearly average
+    withYearly['shot_quality'] = withYearly.apply(lambda row: compare_yearly_relative(row, 'avg_xgoals'), axis=1)
+
+    withYearly['avg_shoot_perc_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_shoot_perc'), axis=1)
+    withYearly['wrist_shot_freq_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'wrist_shot_freq'), axis=1)
+    withYearly['backhand_freq_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'backhand_freq'), axis=1)
+    withYearly['slap_shot_freq_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'slap_shot_freq'), axis=1)
+    withYearly['snap_shot_freq_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'snap_shot_freq'), axis=1)
+    withYearly['tip_in_freq_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'tip_in_freq'), axis=1)
+    withYearly['deflected_freq_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'deflected_freq'), axis=1)
+    withYearly['wrap_around_freq_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'wrap_around_freq'), axis=1)
+    withYearly['avg_xgoals_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals'), axis=1)
+
+    withYearly['avg_xgoals_wrist_shot_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals_wrist_shot'), axis=1)
+    withYearly['avg_xgoals_backhand_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals_backhand'), axis=1)
+    withYearly['avg_xgoals_slap_shot_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals_slap_shot'), axis=1)
+    withYearly['avg_xgoals_snap_shot_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals_snap_shot'), axis=1)
+    withYearly['avg_xgoals_tip_in_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals_tip_in'), axis=1)
+    withYearly['avg_xgoals_deflected_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals_deflected'), axis=1)
+    withYearly['avg_xgoals_wrap_around_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals_wrap_around'), axis=1)
+
+    withYearly['wrist_shot_shooting_perc_aa'] = withYearly.apply(
+        lambda row: compare_yearly_diff(row, 'wrist_shot_shooting_perc'), axis=1)
+    withYearly['backhand_shooting_perc_aa'] = withYearly.apply(
+        lambda row: compare_yearly_diff(row, 'backhand_shooting_perc'), axis=1)
+    withYearly['slap_shot_shooting_perc_aa'] = withYearly.apply(
+        lambda row: compare_yearly_diff(row, 'slap_shot_shooting_perc'), axis=1)
+    withYearly['snap_shot_shooting_perc_aa'] = withYearly.apply(
+        lambda row: compare_yearly_diff(row, 'snap_shot_shooting_perc'), axis=1)
+    withYearly['tip_in_shooting_perc_aa'] = withYearly.apply(
+        lambda row: compare_yearly_diff(row, 'tip_in_shooting_perc'), axis=1)
+    withYearly['deflected_shooting_perc_aa'] = withYearly.apply(
+        lambda row: compare_yearly_diff(row, 'deflected_shooting_perc'), axis=1)
+    withYearly['wrap_around_shooting_perc'] = withYearly.apply(
+        lambda row: compare_yearly_diff(row, 'wrap_around_shooting_perc'), axis=1)
+
+    print('dropping irrelevant columns...')
+    yearlyColumnsToDrop = ['month_ya',  'num_shots_ya',  'num_goals_ya',  'sum_xgoals_ya',  'avg_shoot_perc_ya',  'avg_xgoals_ya',  'avg_xgoals_wrist_shot_ya',  'avg_xgoals_backhand_ya',  'avg_xgoals_slap_shot_ya',
+                           'avg_xgoals_snap_shot_ya',  'avg_xgoals_tip_in_ya',  'avg_xgoals_deflected_ya',  'avg_xgoals_wrap_around_ya',  'wrist_shot_num_ya',  'backhand_num_ya',  'slap_shot_num_ya',  'snap_shot_num_ya',
+                           'tip_in_num_ya',  'deflected_num_ya',  'wrap_around_num_ya',  'wrist_shot_pred_ya',  'backhand_pred_ya',  'slap_shot_pred_ya',  'snap_shot_pred_ya', 'tip_in_pred_ya',  'deflected_pred_ya',
+                           'wrap_around_pred_ya',  'wrist_shot_freq_ya',  'backhand_freq_ya',  'slap_shot_freq_ya',  'snap_shot_freq_ya',  'tip_in_freq_ya',  'deflected_freq_ya',  'wrap_around_freq_ya',
+                           'wrist_shot_shooting_perc_ya',  'backhand_shooting_perc_ya',  'slap_shot_shooting_perc_ya',  'snap_shot_shooting_perc_ya',  'tip_in_shooting_perc_ya',  'deflected_shooting_perc_ya',
+                           'wrap_around_shooting_perc_ya',  'mean_dist_ya',  'mean_ang_ya', 'created']
+
+    tempWithYearly = withYearly.copy()
+    tempWithYearly = tempWithYearly.drop(yearlyColumnsToDrop, axis=1)
+
+    print('Calculating ranks...')
+    playerIds = tempWithYearly['player1_id']
+    years = tempWithYearly['year_code']
+    gameTypes = tempWithYearly['game_type']
+    months = tempWithYearly['month']
+
+    grouped = tempWithYearly.drop(columns=['player1_id']).groupby(['year_code', 'game_type', 'month'])
+
+    pctile_ranks = grouped.rank(pct=True)
+    ranks = grouped.rank(pct=False)
+
+    pctile_ranks = pctile_ranks.reset_index()
+    ranks = ranks.reset_index()
+
+    ranks['player1_id'] = playerIds
+    ranks['year_code'] = years
+    ranks['game_type'] = gameTypes
+    ranks['month'] = months
+
+    pctile_ranks['player1_id'] = playerIds
+    pctile_ranks['year_code'] = years
+    pctile_ranks['game_type'] = gameTypes
+    pctile_ranks['month'] = months
+
+    print('combining ranks...')
+    allRanks = pctile_ranks.merge(ranks, on=['player1_id', 'year_code', 'month', 'game_type'], how='inner',
+                             suffixes=('_pctile', '_rank'))
+
+    print('deleting from db...')
+    if gameSeason == "all":
+        sql = """DELETE from nhlstats.yearly_shooter_summaries"""
+    else:
+        sql = """DELETE FROM nhlstats.yearly_shooter_summaries
+                               WHERE year_code = %s""" % gameSeason
     connection = engine.connect()
     connection.execute(sql)
 
-    shotResults = pd.DataFrame(data=results, columns=cols)
-    shotResults['id'] = playerid
-    shotResults.to_sql('yearly_shooter_summaries', schema='nhlstats', con=engine, if_exists='append', index=False)
+    cols = {'player1_id': 'id'}
+    formattedDf = tempWithYearly.rename(index=str, columns=cols)
+
+    print('pushing to db...')
+    formattedDf.to_sql('yearly_shooter_summaries', schema='nhlstats', con=engine, if_exists='append', index=False)
+
+    csv = './output/csv/test.csv'
+    odo(formattedDf, csv)  # Load csv file into DataFrame
+    odo(csv, dbString)
 
 
 if __name__ == '__main__':
