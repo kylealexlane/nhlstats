@@ -1,7 +1,8 @@
 import pandas as pd
 from production.ignore import engine, dbString
 import sys
-from odo import odo
+import time
+import io
 
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
@@ -10,10 +11,12 @@ pd.set_option('display.max_columns', 150)
 def GenerateAndPushShooterSummaries(gameSeason):
 
     ### TESTING ###
-    gameSeason = 'all'
+    # gameSeason = 'all'
     ####
 
     print('fetching data from adjusted shots...')
+    s = time.time()
+
     # Either generate for all or generate based on specific season
     if gameSeason == "all":
         sql = """SELECT adjs.*, gd.game_type, gd.game_season FROM nhlstats.adjusted_shots AS adjs
@@ -33,7 +36,10 @@ def GenerateAndPushShooterSummaries(gameSeason):
     allShotsFull = allShots.copy()
     allShotsCopy = allShots.copy()
 
+    print(time.time() - s)
     print('fetching yearly averages data...')
+    s = time.time()
+
     sql = """SELECT * FROM nhlstats.yearly_averages where month = 'year'"""
     yearlyAverages = pd.read_sql_query(sql, con=engine)
 
@@ -49,7 +55,10 @@ def GenerateAndPushShooterSummaries(gameSeason):
         else:
             return 0
 
+    print(time.time() - s)
     print('Calculating initial metrics and formatting...')
+    s = time.time()
+
     allShotsTempCopy = allShots.copy()
     allShotsTempCopy['month'] = 'year'
     allShots['month'] = allShots.apply(lambda row: get_month(row), axis=1)
@@ -76,7 +85,10 @@ def GenerateAndPushShooterSummaries(gameSeason):
 
     shotsGrouped = tempShots.groupby(['player1_id', 'game_season', 'month', 'game_type'])
 
+    print(time.time() - s)
     print('Calculating grouped metrics per player...')
+    s = time.time()
+
     # Define the aggregation procedure outside of the groupby operation
     aggregations = {
         'goal_binary': 'sum',
@@ -127,7 +139,10 @@ def GenerateAndPushShooterSummaries(gameSeason):
             return 0
         return (row[label] / row[countLabel])
 
+    print(time.time() - s)
     print('Calculating frequencies and percents...')
+    s = time.time()
+
     metrics.reset_index()
     metrics['shooting_perc'] = metrics.apply(lambda row: get_perc(row, 'goal_binary'), axis=1)
     metrics['wrist_shot_freq'] = metrics.apply(lambda row: get_perc(row, 'wrist_shot'), axis=1)
@@ -158,8 +173,10 @@ def GenerateAndPushShooterSummaries(gameSeason):
     metrics['wrap_around_shooting_perc'] = metrics.apply(lambda row: get_perc_specific(row, 'wrap_around_goal', 'wrap_around'), axis=1)
 
 
-
+    print(time.time() - s)
     print('renaming and formatting...')
+    s = time.time()
+
     metrics = metrics.reset_index()
     columns = {
         'game_season': 'year_code',
@@ -201,7 +218,10 @@ def GenerateAndPushShooterSummaries(gameSeason):
     fomattedDf = metrics.rename(index=str, columns=columns)
     fomattedDf = fomattedDf.drop(dropColumns, axis=1)
 
+    print(time.time() - s)
     print('Joining with yearly averages and calculating metrics...')
+    s = time.time()
+
     withYearly = fomattedDf.merge(yearlyAverages, on=['year_code', 'game_type'], how='left', suffixes=('', '_ya'))
 
 
@@ -246,10 +266,13 @@ def GenerateAndPushShooterSummaries(gameSeason):
         lambda row: compare_yearly_diff(row, 'tip_in_shooting_perc'), axis=1)
     withYearly['deflected_shooting_perc_aa'] = withYearly.apply(
         lambda row: compare_yearly_diff(row, 'deflected_shooting_perc'), axis=1)
-    withYearly['wrap_around_shooting_perc'] = withYearly.apply(
+    withYearly['wrap_around_shooting_perc_aa'] = withYearly.apply(
         lambda row: compare_yearly_diff(row, 'wrap_around_shooting_perc'), axis=1)
 
+    print(time.time() - s)
     print('dropping irrelevant columns...')
+    s = time.time()
+
     yearlyColumnsToDrop = ['month_ya',  'num_shots_ya',  'num_goals_ya',  'sum_xgoals_ya',  'avg_shoot_perc_ya',  'avg_xgoals_ya',  'avg_xgoals_wrist_shot_ya',  'avg_xgoals_backhand_ya',  'avg_xgoals_slap_shot_ya',
                            'avg_xgoals_snap_shot_ya',  'avg_xgoals_tip_in_ya',  'avg_xgoals_deflected_ya',  'avg_xgoals_wrap_around_ya',  'wrist_shot_num_ya',  'backhand_num_ya',  'slap_shot_num_ya',  'snap_shot_num_ya',
                            'tip_in_num_ya',  'deflected_num_ya',  'wrap_around_num_ya',  'wrist_shot_pred_ya',  'backhand_pred_ya',  'slap_shot_pred_ya',  'snap_shot_pred_ya', 'tip_in_pred_ya',  'deflected_pred_ya',
@@ -260,7 +283,10 @@ def GenerateAndPushShooterSummaries(gameSeason):
     tempWithYearly = withYearly.copy()
     tempWithYearly = tempWithYearly.drop(yearlyColumnsToDrop, axis=1)
 
+    print(time.time() - s)
     print('Calculating ranks...')
+    s = time.time()
+
     playerIds = tempWithYearly['player1_id']
     years = tempWithYearly['year_code']
     gameTypes = tempWithYearly['game_type']
@@ -284,11 +310,17 @@ def GenerateAndPushShooterSummaries(gameSeason):
     pctile_ranks['game_type'] = gameTypes
     pctile_ranks['month'] = months
 
+    print(time.time() - s)
     print('combining ranks...')
+    s = time.time()
+
     allRanks = pctile_ranks.merge(ranks, on=['player1_id', 'year_code', 'month', 'game_type'], how='inner',
                              suffixes=('_pctile', '_rank'))
 
+    print(time.time() - s)
     print('deleting from db...')
+    s = time.time()
+
     if gameSeason == "all":
         sql = """DELETE from nhlstats.yearly_shooter_summaries"""
     else:
@@ -300,12 +332,29 @@ def GenerateAndPushShooterSummaries(gameSeason):
     cols = {'player1_id': 'id'}
     formattedDf = tempWithYearly.rename(index=str, columns=cols)
 
+    print(time.time() - s)
     print('pushing to db...')
-    formattedDf.to_sql('yearly_shooter_summaries', schema='nhlstats', con=engine, if_exists='append', index=False)
+    s = time.time()
 
-    csv = './output/csv/test.csv'
-    odo(formattedDf, csv)  # Load csv file into DataFrame
-    odo(csv, dbString)
+    columns = list(formattedDf.columns.values)
+
+    output = io.StringIO()
+    # ignore the index
+    formattedDf.to_csv(output, sep='\t', header=False, index=False)
+    output.getvalue()
+    # jump to start of stream
+    output.seek(0)
+
+    connection = engine.raw_connection()
+    cursor = connection.cursor()
+    # null values become ''
+    cursor.copy_from(output, 'yearly_shooter_summaries', null="", columns=(columns))
+    connection.commit()
+    cursor.close()
+    print(time.time() - s)
+
+
+
 
 
 if __name__ == '__main__':

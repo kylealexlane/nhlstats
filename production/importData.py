@@ -250,53 +250,6 @@ def fetchGameAndPopulate(startDate, endDate):
         cur.execute('DELETE FROM nhlstats.allplays WHERE game_id = (%s) ;', (gamePk,))
         myConnection.commit()
         allPlays.to_sql('allplays', schema='nhlstats', con=engine, if_exists='append', index=False)
-
-        # for index, play in enumerate(gameData['liveData']['plays']['allPlays']):
-        #     cur.execute("""
-        #         INSERT INTO nhlstats.allplays
-        #         VALUES (%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s, %s, %s,%s, %s, %s);
-        #         """,
-        #                 (gamepk,
-        #                  dateutil.parser.parse(dateTime),
-        #                  play['about']['eventIdx'],
-        #                  play['about']['eventId'],
-        #                  play['about']['period'],
-        #                  play['about']['periodType'],
-        #                  play['about']['ordinalNum'],
-        #                  play['about']['periodTime'],
-        #                  play['about']['periodTimeRemaining'],
-        #                  play['about']['goals']['away'],
-        #                  play['about']['goals']['home'],
-        #                  play['coordinates']['x'] if len(play['coordinates']) > 0 and 'x' in play['coordinates'] else None,
-        #                  play['coordinates']['y'] if len(play['coordinates']) >0 and 'y' in play['coordinates'] else None,
-        #                  play['team']['id'] if 'team' in play else None,
-        #                  play['team']['name'] if 'team' in play else None,
-        #                  play['team']['triCode'] if 'team' in play and 'triCode' in play['team'] else None,
-        #                  play['players'][0]['player']['id'] if 'players' in play else None,
-        #                  play['players'][0]['player']['fullName'] if 'players' in play else None,
-        #                  play['players'][0]['playerType'] if 'players' in play else None,
-        #                  play['players'][1]['player']['id'] if ('players' in play) & (len(play['players']) > 1 if 'players' in play else False) else None,
-        #                  play['players'][1]['player']['fullName'] if ('players' in play) & (len(play['players']) > 1 if 'players' in play else False) else None,
-        #                  play['players'][1]['playerType'] if ('players' in play) & (len(play['players']) > 1 if 'players' in play else False) else None,
-        #
-        #                  play['players'][2]['player']['id'] if ('players' in play) & (
-        #                      len(play['players']) > 2 if 'players' in play else False) else None,
-        #                  play['players'][2]['player']['fullName'] if ('players' in play) & (
-        #                      len(play['players']) > 2 if 'players' in play else False) else None,
-        #                  play['players'][2]['playerType'] if ('players' in play) & (
-        #                      len(play['players']) > 2 if 'players' in play else False) else None,
-        #                  play['players'][3]['player']['id'] if ('players' in play) & (
-        #                      len(play['players']) > 3 if 'players' in play else False) else None,
-        #                  play['players'][3]['player']['fullName'] if ('players' in play) & (
-        #                      len(play['players']) > 3 if 'players' in play else False) else None,
-        #                  play['players'][3]['playerType'] if ('players' in play) & (
-        #                      len(play['players']) > 3 if 'players' in play else False) else None,
-        #                  play['result']['event'],
-        #                  play['result']['eventCode'],
-        #                  play['result']['eventTypeId'],
-        #                  play['result']['secondaryType'] if 'secondaryType' in play['result'] else None
-        #                  ))
-
         # commit sql
         myConnection.commit()
         # Close communication with the database
