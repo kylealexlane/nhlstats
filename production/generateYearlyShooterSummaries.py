@@ -32,10 +32,6 @@ def GenerateAndPushShooterSummaries(gameSeason):
                     AND period_type != 'SHOOTOUT'""" % gameSeason
         allShots = pd.read_sql_query(sql, con=engine)
 
-    num = allShots.size
-    allShotsFull = allShots.copy()
-    allShotsCopy = allShots.copy()
-
     print(time.time() - s)
     print('fetching yearly averages data...')
     s = time.time()
