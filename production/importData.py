@@ -4,7 +4,8 @@ import psycopg2
 from datetime import datetime
 from production.ignore import hostname, username, password, database, engine
 import sys
-
+import time
+import io
 
 
 def fetchGameAndPopulate(startDate, endDate):
@@ -14,9 +15,11 @@ def fetchGameAndPopulate(startDate, endDate):
     # endDate = '2019-01-09'
     #####
 
+    print('Reading csv and starting to loop through...')
+    totalTime = time.time()
     i = 0
-    # Fetching from csv
-    gamesList = pd.read_csv('gameslist-{}-{}.csv'.format(startDate, endDate))
+    gamesList = pd.read_csv('gameslist-{}-{}.csv'.format(startDate, endDate))  # Fetching from csv
+
     for index, row in gamesList.iterrows():
 
         myConnection = psycopg2.connect(host=hostname, user=username, password=password, dbname=database)
@@ -39,11 +42,14 @@ def fetchGameAndPopulate(startDate, endDate):
         # gameData = response.json()
         ######
 
-        print("Fetching....")
+        print("Fetching all game info....")
         response = requests.get("https://statsapi.web.nhl.com/api/v1/game/"+str(row[1])+"/feed/live")
+        s = time.time()
         gameData = response.json()
-        print("Done.. sorting and pushing to db...")
 
+        print(time.time() - s)
+        print("Formatting cleaning game details data ...")
+        s = time.time()
         # Preventing errors if data missing
         gd = gameData['gameData'] if 'gameData' in gameData else {}
         g = gd['game'] if 'game' in gd else {}
@@ -162,6 +168,9 @@ def fetchGameAndPopulate(startDate, endDate):
                    'away_hits': awayhits,
                    }
 
+        print(time.time() - s)
+        print("Deleting game details data in db....")
+        s = time.time()
         gameDetails = pd.DataFrame(data=results, index=['i',])
         cur.execute('DELETE FROM nhlstats.game_details WHERE gamepk = (%s) ;', (gamePk,))
         myConnection.commit()
@@ -205,6 +214,9 @@ def fetchGameAndPopulate(startDate, endDate):
         def toDateTime(date):
             datetime.datetime.strptime(date, '%Y-%m-%d')
 
+        print(time.time() - s)
+        print("Formatting and cleaning all play data ....")
+        s = time.time()
         for index, play in enumerate(gameData['liveData']['plays']['allPlays']):
             playResults['game_id'].append(gamepk)
             playResults['game_date'].append(dateTime)
@@ -247,14 +259,43 @@ def fetchGameAndPopulate(startDate, endDate):
             playResults['event_second_type'].append(play['result']['secondaryType'] if 'secondaryType' in play['result'] else None)
 
         allPlays = pd.DataFrame(data=playResults)
+
+        print(time.time() - s)
+        print('Deleting game play data from db...')
+        s = time.time()
         cur.execute('DELETE FROM nhlstats.allplays WHERE game_id = (%s) ;', (gamePk,))
         myConnection.commit()
-        allPlays.to_sql('allplays', schema='nhlstats', con=engine, if_exists='append', index=False)
+
+        print(time.time() - s)
+        print('Pushing play data to db...')
+        s = time.time()
+
+        columns = list(allPlays.columns.values)
+
+        output = io.StringIO()
+        # ignore the index
+        allPlays.to_csv(output, sep='\t', header=False, index=False)
+        output.getvalue()
+        # jump to start of stream
+        output.seek(0)
+
+        connection = engine.raw_connection()
+        cursor = connection.cursor()
+        # null values become ''
+        cursor.copy_from(output, 'allplays', null="", columns=(columns))
+        connection.commit()
+        cursor.close()
+        print(time.time() - s)
+
+        # allPlays.to_sql('allplays', schema='nhlstats', con=engine, if_exists='append', index=False)
+
         # commit sql
-        myConnection.commit()
         # Close communication with the database
         cur.close()
         myConnection.close()
+
+    print(time.time() - totalTime)
+
 
 if __name__ == '__main__':
     script_name = sys.argv[0]

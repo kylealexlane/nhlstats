@@ -5,7 +5,7 @@ import time
 import io
 
 pd.set_option('display.expand_frame_repr', False)
-pd.set_option('display.max_row', 100)
+pd.set_option('display.max_row', 200)
 pd.set_option('display.max_columns', 150)
 
 
@@ -13,6 +13,7 @@ def GenerateAndPushGoalieSummaries(gameSeason):
 
     ### TESTING ###
     # gameSeason = 'all'
+    # gameSeason = '20182019'
     ####
 
     print('fetching data from adjusted shots...')
@@ -371,6 +372,9 @@ def GenerateAndPushGoalieSummaries(gameSeason):
     print(time.time() - s)
     print('Calculating ranks...')
     s = time.time()
+
+    tempWithYearly['playerid'] = pd.to_numeric(tempWithYearly['playerid'], downcast='integer')
+
     playerIds = tempWithYearly['playerid']
     years = tempWithYearly['year_code']
     gameTypes = tempWithYearly['game_type']
@@ -383,6 +387,12 @@ def GenerateAndPushGoalieSummaries(gameSeason):
 
     pctile_ranks = pctile_ranks.reset_index()
     ranks = ranks.reset_index()
+
+    playerIds = playerIds.to_frame().set_index(ranks.index)
+    years = years.to_frame().set_index(ranks.index)
+    gameTypes = gameTypes.to_frame().set_index(ranks.index)
+    months = months.to_frame().set_index(ranks.index)
+
 
     ranks['playerid'] = playerIds
     ranks['year_code'] = years
@@ -433,8 +443,43 @@ def GenerateAndPushGoalieSummaries(gameSeason):
     cursor.copy_from(output, 'yearly_goalie_summaries', null="", columns=(columns))
     connection.commit()
     cursor.close()
-    print(time.time() - s)
 
+
+    # Delete ranked data to ranks table
+    print(time.time() - s)
+    print('deleting from ranks db...')
+    s = time.time()
+    if gameSeason == "all":
+        sql = """DELETE from nhlstats.yearly_goalie_ranks"""
+    else:
+        sql = """DELETE FROM nhlstats.yearly_goalie_ranks
+                                   WHERE year_code = %s""" % gameSeason
+    connection = engine.connect()
+    connection.execute(sql)
+
+    # Push ranked data to ranks table
+    formattedDf = allRanks.rename(index=str, columns=cols)
+    formattedDf = formattedDf.drop(columns=['index_pctile', 'index_rank'])
+    print(time.time() - s)
+    print('pushing to ranks db...')
+    s = time.time()
+
+    columns = list(formattedDf.columns.values)
+
+    output = io.StringIO()
+    # ignore the index
+    formattedDf.to_csv(output, sep='\t', header=False, index=False)
+    output.getvalue()
+    # jump to start of stream
+    output.seek(0)
+
+    connection = engine.raw_connection()
+    cursor = connection.cursor()
+    # null values become ''
+    cursor.copy_from(output, 'yearly_goalie_ranks', null="", columns=(columns))
+    connection.commit()
+    cursor.close()
+    print(time.time() - s)
 
 
 if __name__ == '__main__':

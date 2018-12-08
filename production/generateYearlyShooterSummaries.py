@@ -8,10 +8,13 @@ pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
 pd.set_option('display.max_columns', 150)
 
+
 def GenerateAndPushShooterSummaries(gameSeason):
 
     ### TESTING ###
     # gameSeason = 'all'
+    # gameSeason = '20182019'
+
     ####
 
     print('fetching data from adjusted shots...')
@@ -326,8 +329,9 @@ def GenerateAndPushShooterSummaries(gameSeason):
     connection.execute(sql)
 
     cols = {'player1_id': 'id'}
-    formattedDf = tempWithYearly.rename(index=str, columns=cols)
 
+    # Pushing values to yearly_shooter_summaries
+    formattedDf = tempWithYearly.rename(index=str, columns=cols)
     print(time.time() - s)
     print('pushing to db...')
     s = time.time()
@@ -350,6 +354,42 @@ def GenerateAndPushShooterSummaries(gameSeason):
     print(time.time() - s)
 
 
+    # Delete ranked data from ranks table
+    print(time.time() - s)
+    print('deleting from ranks db...')
+    s = time.time()
+
+    if gameSeason == "all":
+        sql = """DELETE from nhlstats.yearly_shooter_ranks"""
+    else:
+        sql = """DELETE FROM nhlstats.yearly_shooter_ranks
+                                   WHERE year_code = %s""" % gameSeason
+    connection = engine.connect()
+    connection.execute(sql)
+
+    # Push ranked data to ranks table
+    formattedDf = allRanks.rename(index=str, columns=cols)
+    formattedDf = formattedDf.drop(columns=['index_pctile', 'index_rank'])
+    print(time.time() - s)
+    print('pushing to ranks db...')
+    s = time.time()
+
+    columns = list(formattedDf.columns.values)
+
+    output = io.StringIO()
+    # ignore the index
+    formattedDf.to_csv(output, sep='\t', header=False, index=False)
+    output.getvalue()
+    # jump to start of stream
+    output.seek(0)
+
+    connection = engine.raw_connection()
+    cursor = connection.cursor()
+    # null values become ''
+    cursor.copy_from(output, 'yearly_shooter_ranks', null="", columns=(columns))
+    connection.commit()
+    cursor.close()
+    print(time.time() - s)
 
 
 

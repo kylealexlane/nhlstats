@@ -3,35 +3,32 @@ import numpy as np
 import pickle
 from production.ignore import engine
 import sys
-from sqlalchemy import event
+import time
 import io
-
 
 
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)
 pd.set_option('display.max_columns', 50)
 
-@event.listens_for(engine, 'before_cursor_execute')
-def receive_before_cursor_execute(conn, cursor, statement, params, context, executemany):
-    if executemany:
-        cursor.fast_executemany = True
-        cursor.commit()
 
 def AdjustShots(startDate, endDate):
     # startDate = '2010-08-01'
     # endDate = '2019-08-01'
 
-    startDate = '2013-01-18'
-    endDate = '2013-04-29'
+    # startDate = '2013-01-18'
+    # endDate = '2013-04-29'
+    totalTime = time.time()
 
     print('fetching all plays...')
+    s = time.time()
     sql = """SELECT * from  nhlstats.allplays 
         WHERE (event_type = 'Shot' 
         OR event_type = 'Goal' 
         OR event_type ='Missed Shot') 
         AND game_date > '%s'
         AND game_date < '%s'
+        AND period_type != 'SHOOTOUT'
         """ % (startDate, endDate)
 
     allShots = pd.read_sql_query(sql, con=engine)
@@ -45,7 +42,9 @@ def AdjustShots(startDate, endDate):
     # allShots.fillna(allShots.mean())
     allShots = allShots.fillna(0)
 
+    print(time.time() - s)
     print('adjust shots and format...')
+    s = time.time()
     # net center location
     goal_x = 89
     goal_y = 0
@@ -81,7 +80,9 @@ def AdjustShots(startDate, endDate):
     X_pp = loaded_scaled_factors.transform(X)
     np.argwhere(np.isnan(X_pp))
 
+    print(time.time() - s)
     print('making predictions...')
+    s = time.time()
     predictions = loaded_model.predict_proba(X_pp)
 
     predictions_1 = predictions[:, 1]
@@ -91,7 +92,9 @@ def AdjustShots(startDate, endDate):
 
     allShots_predicted.head()
 
+    print(time.time() - s)
     print('deleting from db...')
+    s = time.time()
     connection = engine.connect()
     result = connection.execute("""DELETE FROM nhlstats.adjusted_shots WHERE game_date > '%s'
         AND game_date < '%s'""" % (startDate, endDate))
@@ -99,31 +102,50 @@ def AdjustShots(startDate, endDate):
     # print('writing to db...')
     # allShots.to_sql('adjusted_shots', schema = 'nhlstats', con=engine, if_exists='append', index=False)
 
+    print(time.time() - s)
+    print('pushing to db...')
+    s = time.time()
 
+    columns = list(allShots.columns.values)
 
-
-
-
+    output = io.StringIO()
+    # ignore the index
+    allShots.to_csv(output, sep='\t', header=False, index=False)
+    output.getvalue()
+    # jump to start of stream
+    output.seek(0)
 
     connection = engine.raw_connection()
     cursor = connection.cursor()
-
-    # stream the data using 'to_csv' and StringIO(); then use sql's 'copy_from' function
-    output = io.StringIO()
-    # ignore the index
-    toints = ['game_id', 'event_idx', 'event_id', 'period', 'away_goals', 'home_goals', 'x_coords', 'y_coords', 'team_id',
-               'player1_id', 'player2_id', 'player3_id', 'player4_id', 'adjx', 'adjy', 'goal_binary', 'wrist_shot',
-               'backhand', 'slap_shot', 'snap_shot', 'tip_in', 'deflected', 'wrap_around', 'none']
-    allShots[toints] = allShots[toints].astype(int)
-    allShots.to_csv(output, sep='\t', header=False, index=False)
-    # jump to start of stream
-    output.seek(0)
-    contents = output.getvalue()
-    cur = connection.cursor()
     # null values become ''
-    cur.copy_from(output, 'nhlstats.adjusted_shots', null="")
+    cursor.copy_from(output, 'adjusted_shots', null="", columns=(columns))
     connection.commit()
-    cur.close()
+    cursor.close()
+    print(time.time() - s)
+    print(time.time() - totalTime)
+
+
+
+
+    # connection = engine.raw_connection()
+    # cursor = connection.cursor()
+    #
+    # # stream the data using 'to_csv' and StringIO(); then use sql's 'copy_from' function
+    # output = io.StringIO()
+    # # ignore the index
+    # toints = ['game_id', 'event_idx', 'event_id', 'period', 'away_goals', 'home_goals', 'x_coords', 'y_coords', 'team_id',
+    #            'player1_id', 'player2_id', 'player3_id', 'player4_id', 'adjx', 'adjy', 'goal_binary', 'wrist_shot',
+    #            'backhand', 'slap_shot', 'snap_shot', 'tip_in', 'deflected', 'wrap_around', 'none']
+    # allShots[toints] = allShots[toints].astype(int)
+    # allShots.to_csv(output, sep='\t', header=False, index=False)
+    # # jump to start of stream
+    # output.seek(0)
+    # contents = output.getvalue()
+    # cur = connection.cursor()
+    # # null values become ''
+    # cur.copy_from(output, 'nhlstats.adjusted_shots', null="")
+    # connection.commit()
+    # cur.close()
 
 
 if __name__ == '__main__':
@@ -135,4 +157,4 @@ if __name__ == '__main__':
         sys.exit('Need three arguments!')
     print("The arguments are: ", str(sys.argv))
     AdjustShots(sys.argv[1], sys.argv[2])
-    AdjustShots('2010-08-01', '2011-08-01')
+    # AdjustShots('2010-08-01', '2011-08-01')
