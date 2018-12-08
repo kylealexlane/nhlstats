@@ -1,7 +1,7 @@
 import pandas as pd
 import requests
 import psycopg2
-from production.ignore import engine, hostname, username, password, database
+from ignore import engine, hostname, username, password, database
 
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_row', 100)

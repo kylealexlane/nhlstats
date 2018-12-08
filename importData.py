@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 import psycopg2
 from datetime import datetime
-from production.ignore import hostname, username, password, database, engine
+from ignore import hostname, username, password, database, engine
 import sys
 import time
 import io
@@ -18,7 +18,7 @@ def fetchGameAndPopulate(startDate, endDate):
     print('Reading csv and starting to loop through...')
     totalTime = time.time()
     i = 0
-    gamesList = pd.read_csv('gameslist-{}-{}.csv'.format(startDate, endDate))  # Fetching from csv
+    gamesList = pd.read_csv('output/csv/gameslist-{}-{}.csv'.format(startDate, endDate))  # Fetching from csv
 
     for index, row in gamesList.iterrows():
 
@@ -79,7 +79,7 @@ def fetchGameAndPopulate(startDate, endDate):
         home = teams['home'] if 'home' in teams else {}
         awayId = away['id'] if 'id' in away else None
         awayFranchiseId = away['franchiseId'] if 'franchiseId' in away else None
-        homeId = away['id'] if 'id' in home else None
+        homeId = home['id'] if 'id' in home else None
         homeFranchiseId = home['franchiseId'] if 'franchiseId' in home else None
 
         # venue info
@@ -269,6 +269,16 @@ def fetchGameAndPopulate(startDate, endDate):
         print(time.time() - s)
         print('Pushing play data to db...')
         s = time.time()
+
+        allPlays['x_coords'] = allPlays['x_coords'].fillna(0.0).astype(int)
+        allPlays['y_coords'] = allPlays['y_coords'].fillna(0.0).astype(int)
+        allPlays['team_id'] = allPlays['team_id'].fillna(0.0).astype(int)
+        allPlays['player1_id'] = allPlays['player1_id'].fillna(0.0).astype(int)
+        allPlays['player2_id'] = allPlays['player2_id'].fillna(0.0).astype(int)
+        allPlays['player3_id'] = allPlays['player3_id'].fillna(0.0).astype(int)
+        allPlays['player4_id'] = allPlays['player4_id'].fillna(0.0).astype(int)
+
+
 
         columns = list(allPlays.columns.values)
 

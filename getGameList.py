@@ -1,9 +1,5 @@
-import numpy as np
 import pandas as pd
 import requests
-import psycopg2
-from datetime import datetime
-import dateutil.parser
 import os
 import sys
 

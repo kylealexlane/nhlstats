@@ -1,5 +1,5 @@
 import pandas as pd
-from production.ignore import engine, dbString
+from ignore import engine
 import sys
 import time
 import io
