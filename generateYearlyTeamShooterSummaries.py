@@ -13,7 +13,7 @@ def GenerateAndPushTeamShooterSummaries(gameSeason):
 
     ### TESTING ###
     # gameSeason = 'all'
-    gameSeason = '20182019'
+    # gameSeason = '20182019'
 
     ####
 

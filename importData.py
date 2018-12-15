@@ -13,6 +13,9 @@ def fetchGameAndPopulate(startDate, endDate):
     ### TESTING
     # startDate = '2018-01-09'
     # endDate = '2019-01-09'
+
+    # startDate = '2010-01-09'
+    # endDate = '2011-01-09'
     #####
 
     print('Reading csv and starting to loop through...')
@@ -30,7 +33,7 @@ def fetchGameAndPopulate(startDate, endDate):
         print(row[1])
 
         # Break to continue incomplete scripts
-        # if i < 721:
+        # if i < 650:
         #     continue
 
         gamePk = str(row[1])
@@ -217,7 +220,13 @@ def fetchGameAndPopulate(startDate, endDate):
         print(time.time() - s)
         print("Formatting and cleaning all play data ....")
         s = time.time()
-        for index, play in enumerate(gameData['liveData']['plays']['allPlays']):
+
+        # Live plays might be empty in older cases
+        plays = liveData['plays'] if 'plays' in liveData else {}
+        allPlays = plays['allPlays'] if 'allPlays' in plays else {}
+
+
+        for index, play in enumerate(allPlays):
             playResults['game_id'].append(gamepk)
             playResults['game_date'].append(dateTime)
             playResults['event_idx'].append(play['about']['eventIdx'])

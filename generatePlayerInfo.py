@@ -42,18 +42,8 @@ for index, row in allPlayerIds.iterrows():
     #
     print(playerid, index)
 
-    # if playerid == 0 or int(index) < 1663:
-    #     #     continue
-
     response = requests.get("https://statsapi.web.nhl.com/api/v1/people/" + str(playerid))
     playerData = response.json()
-
-
-
-    # hostname = 'localhost'
-    # username = 'kylelane'
-    # password = ''
-    # database = 'kylelane'
 
     myConnection = psycopg2.connect(host=hostname, user=username, password=password, dbname=database)
     cur = myConnection.cursor()

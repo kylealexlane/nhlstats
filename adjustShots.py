@@ -39,7 +39,6 @@ def AdjustShots(startDate, endDate):
     filename = './savedModels/finalized_model_knn_1000_scaled_factors.sav'
     loaded_scaled_factors = pickle.load(open(filename, 'rb'))
 
-    # allShots.fillna(allShots.mean())
     allShots = allShots.fillna(0)
 
     print(time.time() - s)
@@ -99,9 +98,6 @@ def AdjustShots(startDate, endDate):
     result = connection.execute("""DELETE FROM nhlstats.adjusted_shots WHERE game_date > '%s'
         AND game_date < '%s'""" % (startDate, endDate))
 
-    # print('writing to db...')
-    # allShots.to_sql('adjusted_shots', schema = 'nhlstats', con=engine, if_exists='append', index=False)
-
     print(time.time() - s)
     print('pushing to db...')
     s = time.time()
@@ -123,29 +119,6 @@ def AdjustShots(startDate, endDate):
     cursor.close()
     print(time.time() - s)
     print(time.time() - totalTime)
-
-
-
-
-    # connection = engine.raw_connection()
-    # cursor = connection.cursor()
-    #
-    # # stream the data using 'to_csv' and StringIO(); then use sql's 'copy_from' function
-    # output = io.StringIO()
-    # # ignore the index
-    # toints = ['game_id', 'event_idx', 'event_id', 'period', 'away_goals', 'home_goals', 'x_coords', 'y_coords', 'team_id',
-    #            'player1_id', 'player2_id', 'player3_id', 'player4_id', 'adjx', 'adjy', 'goal_binary', 'wrist_shot',
-    #            'backhand', 'slap_shot', 'snap_shot', 'tip_in', 'deflected', 'wrap_around', 'none']
-    # allShots[toints] = allShots[toints].astype(int)
-    # allShots.to_csv(output, sep='\t', header=False, index=False)
-    # # jump to start of stream
-    # output.seek(0)
-    # contents = output.getvalue()
-    # cur = connection.cursor()
-    # # null values become ''
-    # cur.copy_from(output, 'nhlstats.adjusted_shots', null="")
-    # connection.commit()
-    # cur.close()
 
 
 if __name__ == '__main__':
