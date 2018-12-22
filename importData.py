@@ -40,7 +40,7 @@ def fetchGameAndPopulate(startDate, endDate):
         # If using gamePk
 
         ### TESTING
-        # gamePk = '2018020323'
+        # gamePk = '2018020322'
         # response = requests.get("https://statsapi.web.nhl.com/api/v1/game/" + gamePk + "/feed/live")
         # gameData = response.json()
         ######

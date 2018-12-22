@@ -314,6 +314,8 @@ def GenerateAndPushTeamShooterSummaries(gameSeason):
     print('Calculating ranks...')
     s = time.time()
 
+    tempWithYearly['shooting_team_id'] = pd.to_numeric(tempWithYearly['shooting_team_id'], downcast='integer')
+
     playerIds = tempWithYearly['shooting_team_id']
     years = tempWithYearly['year_code']
     gameTypes = tempWithYearly['game_type']
