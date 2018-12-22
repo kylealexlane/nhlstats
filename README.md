@@ -6,6 +6,6 @@ Import works as follows:
 - Transform data and use models to create new metrics
 - Push to RDS hosted Postgres db
 
-More info/details will be posted soon with documentation!
+For documentation on api visit docs.thepuckluck.com!
 
 Contact me for more info!
