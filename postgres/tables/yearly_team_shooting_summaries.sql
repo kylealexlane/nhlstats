@@ -47,6 +47,8 @@ CREATE TABLE nhlstats.yearly_team_shooter_summaries (
     avg_xgoals_deflected          REAL,
     avg_xgoals_wrap_around        REAL,
 
+    goals_aa_per_shot             REAL,
+
     wrist_shot_shooting_perc      REAL,
     backhand_shooting_perc        REAL,
     slap_shot_shooting_perc       REAL,

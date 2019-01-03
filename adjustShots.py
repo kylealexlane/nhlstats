@@ -130,4 +130,6 @@ if __name__ == '__main__':
         sys.exit('Need three arguments!')
     print("The arguments are: ", str(sys.argv))
     AdjustShots(sys.argv[1], sys.argv[2])
-    # AdjustShots('2010-08-01', '2011-08-01')
+
+    # AdjustShots('2010-08-01', '2019-08-01')
+    # AdjustShots('2018-08-01', '2019-08-01')

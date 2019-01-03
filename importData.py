@@ -326,6 +326,10 @@ if __name__ == '__main__':
     print("The arguments are: ", str(sys.argv))
     fetchGameAndPopulate(sys.argv[1], sys.argv[2])
 
+    # fetchGameAndPopulate('2018-01-09', '2019-01-09')
+
+
+
 
 
 

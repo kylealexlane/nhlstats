@@ -48,6 +48,8 @@ CREATE TABLE nhlstats.yearly_shooter_ranks (
     avg_xgoals_deflected_pctile          REAL,
     avg_xgoals_wrap_around_pctile        REAL,
 
+    goals_aa_per_shot_pctile          REAL,
+
     wrist_shot_shooting_perc_pctile      REAL,
     backhand_shooting_perc_pctile        REAL,
     slap_shot_shooting_perc_pctile       REAL,
@@ -125,6 +127,8 @@ CREATE TABLE nhlstats.yearly_shooter_ranks (
     avg_xgoals_tip_in_rank             REAL,
     avg_xgoals_deflected_rank          REAL,
     avg_xgoals_wrap_around_rank        REAL,
+
+    goals_aa_per_shot_rank             REAL,
 
     wrist_shot_shooting_perc_rank      REAL,
     backhand_shooting_perc_rank        REAL,

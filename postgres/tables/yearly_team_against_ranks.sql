@@ -50,6 +50,8 @@ CREATE TABLE nhlstats.yearly_team_against_ranks (
     xsave_perc_deflected_pctile           REAL,
     xsave_perc_wrap_around_pctile         REAL,
 
+    saves_aa_per_shot_pctile              REAL,
+
     wrist_shot_save_perc_pctile           REAL,
     backhand_save_perc_pctile             REAL,
     slap_shot_save_perc_pctile            REAL,
@@ -128,6 +130,8 @@ CREATE TABLE nhlstats.yearly_team_against_ranks (
     xsave_perc_tip_in_rank              REAL,
     xsave_perc_deflected_rank           REAL,
     xsave_perc_wrap_around_rank         REAL,
+
+    saves_aa_per_shot_rank              REAL,
 
     wrist_shot_save_perc_rank           REAL,
     backhand_save_perc_rank             REAL,
