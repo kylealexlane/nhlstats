@@ -18,6 +18,8 @@ CREATE TABLE nhlstats.yearly_averages (
     avg_xgoals_deflected           REAL,
     avg_xgoals_wrap_around         REAL,
 
+    goals_aa_per_shot              REAL,
+
     wrist_shot_num                 REAL,
     backhand_num                   REAL,
     slap_shot_num                  REAL,

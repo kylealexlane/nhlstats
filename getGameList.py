@@ -32,5 +32,8 @@ if __name__ == '__main__':
     print("The arguments are: ", str(sys.argv))
     fetch_games_create_csv(sys.argv[1], sys.argv[2])
 
+    # fetch_games_create_csv("2018-08-01", "2019-08-01")
+
+
 
 

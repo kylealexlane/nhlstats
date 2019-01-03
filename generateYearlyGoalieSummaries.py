@@ -157,6 +157,7 @@ def GenerateAndPushGoalieSummaries(gameSeason):
     metrics['wrap_around_freq'] = metrics.apply(lambda row: get_perc(row, 'wrap_around'), axis=1)
 
     metrics['pred_shooting_perc'] = metrics.apply(lambda row: get_perc(row, 'pred'), axis=1)
+    # metrics['goals_aa_per_shot'] = metrics['shooting_perc'] - metrics['pred_shooting_perc']
 
     metrics['pred_shooting_perc_wrist_shot'] = metrics.apply(lambda row: get_pred_perc(row, 'wrist_shot_pred', 'wrist_shot'), axis=1)
     metrics['pred_shooting_perc_backhand'] = metrics.apply(lambda row: get_pred_perc(row, 'backhand_pred', 'backhand'), axis=1)
@@ -279,7 +280,7 @@ def GenerateAndPushGoalieSummaries(gameSeason):
                            'tip_in_num_ya',  'deflected_num_ya',  'wrap_around_num_ya',  'wrist_shot_pred_ya',  'backhand_pred_ya',  'slap_shot_pred_ya',  'snap_shot_pred_ya', 'tip_in_pred_ya',  'deflected_pred_ya',
                            'wrap_around_pred_ya',  'wrist_shot_freq_ya',  'backhand_freq_ya',  'slap_shot_freq_ya',  'snap_shot_freq_ya',  'tip_in_freq_ya',  'deflected_freq_ya',  'wrap_around_freq_ya',
                            'wrist_shot_shooting_perc_ya',  'backhand_shooting_perc_ya',  'slap_shot_shooting_perc_ya',  'snap_shot_shooting_perc_ya',  'tip_in_shooting_perc_ya',  'deflected_shooting_perc_ya',
-                           'wrap_around_shooting_perc_ya',  'mean_dist_ya',  'mean_ang_ya', 'created']
+                           'wrap_around_shooting_perc_ya',  'mean_dist_ya',  'goals_aa_per_shot', 'mean_ang_ya', 'created']
 
     tempWithYearly = withYearly.copy()
     tempWithYearly = tempWithYearly.drop(yearlyColumnsToDrop, axis=1)
@@ -309,6 +310,7 @@ def GenerateAndPushGoalieSummaries(gameSeason):
 
         'avg_shoot_perc_aa': 'save_perc_aa',
         'avg_xgoals_aa': 'xsave_perc_aa',
+        # 'goals_aa_per_shot': 'saves_aa_per_shot',
 
         'avg_xgoals_wrist_shot_aa': 'xsave_perc_wrist_shot_aa',
         'avg_xgoals_backhand_aa': 'xsave_perc_backhand_aa',
@@ -343,6 +345,8 @@ def GenerateAndPushGoalieSummaries(gameSeason):
     tempWithYearly['xsave_perc_tip_in'] = tempWithYearly.apply(lambda row: change_metric(row, 'xsave_perc_tip_in'), axis=1)
     tempWithYearly['xsave_perc_deflected'] = tempWithYearly.apply(lambda row: change_metric(row, 'xsave_perc_deflected'), axis=1)
     tempWithYearly['xsave_perc_wrap_around'] = tempWithYearly.apply(lambda row: change_metric(row, 'xsave_perc_wrap_around'), axis=1)
+
+    tempWithYearly['saves_aa_per_shot'] = tempWithYearly['save_perc'] - tempWithYearly['xsave_perc']
 
     tempWithYearly['wrist_shot_save_perc'] = tempWithYearly.apply(lambda row: change_metric(row, 'wrist_shot_save_perc'), axis=1)
     tempWithYearly['backhand_save_perc'] = tempWithYearly.apply(lambda row: change_metric(row, 'backhand_save_perc'), axis=1)
@@ -422,7 +426,7 @@ def GenerateAndPushGoalieSummaries(gameSeason):
     connection.execute(sql)
 
     cols = {'playerid': 'id'}
-    formattedDf = tempWithYearly.rename(index=str, columns=cols)
+    formattedDf = tempWithYearly.rename(index=str, columns=cols).round(3)
 
     print(time.time() - s)
     print('pushing to db...')
@@ -458,7 +462,7 @@ def GenerateAndPushGoalieSummaries(gameSeason):
     connection.execute(sql)
 
     # Push ranked data to ranks table
-    formattedDf = allRanks.rename(index=str, columns=cols)
+    formattedDf = allRanks.rename(index=str, columns=cols).round(3)
     formattedDf = formattedDf.drop(columns=['index_pctile', 'index_rank'])
     print(time.time() - s)
     print('pushing to ranks db...')

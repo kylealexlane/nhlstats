@@ -181,6 +181,7 @@ def GenerateAndPushTeamShooterSummaries(gameSeason):
     metrics['wrap_around_freq'] = metrics.apply(lambda row: get_perc(row, 'wrap_around'), axis=1)
 
     metrics['pred_shooting_perc'] = metrics.apply(lambda row: get_perc(row, 'pred'), axis=1)
+    metrics['goals_aa_per_shot'] = metrics['shooting_perc'] - metrics['pred_shooting_perc']
 
     metrics['pred_shooting_perc_wrist_shot'] = metrics.apply(lambda row: get_pred_perc(row, 'wrist_shot_pred', 'wrist_shot'), axis=1)
     metrics['pred_shooting_perc_backhand'] = metrics.apply(lambda row: get_pred_perc(row, 'backhand_pred', 'backhand'), axis=1)
@@ -272,6 +273,7 @@ def GenerateAndPushTeamShooterSummaries(gameSeason):
     withYearly['deflected_freq_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'deflected_freq'), axis=1)
     withYearly['wrap_around_freq_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'wrap_around_freq'), axis=1)
     withYearly['avg_xgoals_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals'), axis=1)
+    # withYearly['goals_aa_per_shot_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'goals_aa_per_shot'), axis=1)
 
     withYearly['avg_xgoals_wrist_shot_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals_wrist_shot'), axis=1)
     withYearly['avg_xgoals_backhand_aa'] = withYearly.apply(lambda row: compare_yearly_diff(row, 'avg_xgoals_backhand'), axis=1)
@@ -305,7 +307,7 @@ def GenerateAndPushTeamShooterSummaries(gameSeason):
                            'tip_in_num_ya',  'deflected_num_ya',  'wrap_around_num_ya',  'wrist_shot_pred_ya',  'backhand_pred_ya',  'slap_shot_pred_ya',  'snap_shot_pred_ya', 'tip_in_pred_ya',  'deflected_pred_ya',
                            'wrap_around_pred_ya',  'wrist_shot_freq_ya',  'backhand_freq_ya',  'slap_shot_freq_ya',  'snap_shot_freq_ya',  'tip_in_freq_ya',  'deflected_freq_ya',  'wrap_around_freq_ya',
                            'wrist_shot_shooting_perc_ya',  'backhand_shooting_perc_ya',  'slap_shot_shooting_perc_ya',  'snap_shot_shooting_perc_ya',  'tip_in_shooting_perc_ya',  'deflected_shooting_perc_ya',
-                           'wrap_around_shooting_perc_ya',  'mean_dist_ya',  'mean_ang_ya', 'created']
+                           'wrap_around_shooting_perc_ya',  'mean_dist_ya',  'mean_ang_ya', 'goals_aa_per_shot_ya', 'created']
 
     tempWithYearly = withYearly.copy()
     tempWithYearly = tempWithYearly.drop(yearlyColumnsToDrop, axis=1)
@@ -361,7 +363,7 @@ def GenerateAndPushTeamShooterSummaries(gameSeason):
     cols = {'shooting_team_id': 'id'}
 
     # Pushing values to yearly_shooter_summaries
-    formattedDf = tempWithYearly.rename(index=str, columns=cols)
+    formattedDf = tempWithYearly.rename(index=str, columns=cols).round(3)
     print(time.time() - s)
     print('pushing to db...')
     s = time.time()
@@ -398,7 +400,7 @@ def GenerateAndPushTeamShooterSummaries(gameSeason):
     connection.execute(sql)
 
     # Push ranked data to ranks table
-    formattedDf = allRanks.rename(index=str, columns=cols)
+    formattedDf = allRanks.rename(index=str, columns=cols).round(3)
     formattedDf = formattedDf.drop(columns=['index_pctile', 'index_rank'])
     print(time.time() - s)
     print('pushing to ranks db...')

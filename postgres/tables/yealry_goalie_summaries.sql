@@ -47,6 +47,8 @@ CREATE TABLE nhlstats.yearly_goalie_summaries (
     xsave_perc_deflected          REAL,
     xsave_perc_wrap_around        REAL,
 
+    saves_aa_per_shot             REAL,
+
     wrist_shot_save_perc          REAL,
     backhand_save_perc            REAL,
     slap_shot_save_perc           REAL,

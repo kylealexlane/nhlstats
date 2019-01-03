@@ -29,6 +29,7 @@ def GenerateAndPushYearlyAverages(gameSeason):
         allShots = pd.read_sql_query(sql, con=engine)
 
     print('calculating metrics...')
+
     def get_month(row):
         return row['game_date'].month
 
@@ -120,6 +121,9 @@ def GenerateAndPushYearlyAverages(gameSeason):
     metrics.reset_index()
     metrics['shooting_perc'] = metrics.apply(lambda row: get_perc(row, 'goal_binary'), axis=1)
     metrics['pred_shooting_perc'] = metrics.apply(lambda row: get_perc(row, 'goal_binary'), axis=1)
+
+    metrics['goals_aa_per_shot'] = metrics['shooting_perc'] - metrics['pred_shooting_perc']
+
     metrics['wrist_shot_freq'] = metrics.apply(lambda row: get_perc(row, 'wrist_shot'), axis=1)
     metrics['backhand_freq'] = metrics.apply(lambda row: get_perc(row, 'backhand'), axis=1)
     metrics['slap_shot_freq'] = metrics.apply(lambda row: get_perc(row, 'slap_shot'), axis=1)
@@ -201,7 +205,7 @@ def GenerateAndPushYearlyAverages(gameSeason):
         'index'
     ]
 
-    fomattedDf = metrics.rename(index=str, columns=columns)
+    fomattedDf = metrics.rename(index=str, columns=columns).round(3)
     fomattedDf = fomattedDf.drop(dropColumns, axis=1)
 
     print('deleting from db...')
