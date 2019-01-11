@@ -175,7 +175,9 @@ def fetchGameAndPopulate(startDate, endDate):
         print("Deleting game details data in db....")
         s = time.time()
         gameDetails = pd.DataFrame(data=results, index=['i',])
-        cur.execute('DELETE FROM nhlstats.game_details WHERE gamepk = (%s) ;', (gamePk,))
+
+        string = "DELETE FROM nhlstats.game_details WHERE gamepk = %s ;" % gamePk
+        cur.execute(string)
         myConnection.commit()
         gameDetails.to_sql('game_details', schema='nhlstats', con=engine, if_exists='append', index=False)
 
@@ -272,7 +274,7 @@ def fetchGameAndPopulate(startDate, endDate):
         print(time.time() - s)
         print('Deleting game play data from db...')
         s = time.time()
-        cur.execute('DELETE FROM nhlstats.allplays WHERE game_id = (%s) ;', (gamePk,))
+        cur.execute("DELETE FROM nhlstats.allplays WHERE game_id = %s ;" % gamePk)
         myConnection.commit()
 
         print(time.time() - s)
