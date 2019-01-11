@@ -194,6 +194,7 @@ def GenerateAndPushYearlyAverages(gameSeason):
         'ang': 'mean_ang'
     }
 
+
     dropColumns=[
         'wrist_shot_goal',
         'backhand_goal',
@@ -201,9 +202,11 @@ def GenerateAndPushYearlyAverages(gameSeason):
         'snap_shot_goal',
         'tip_in_goal',
         'deflected_goal',
-        'wrap_around_goal',
-        'index'
+        'wrap_around_goal'
     ]
+    if gameSeason == "all":
+        dropColumns.append('index')
+
 
     fomattedDf = metrics.rename(index=str, columns=columns).round(3)
     fomattedDf = fomattedDf.drop(dropColumns, axis=1)

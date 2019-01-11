@@ -15,9 +15,10 @@ pd.set_option('display.max_columns', 50)
 def AdjustShots(startDate, endDate):
     # startDate = '2010-08-01'
     # endDate = '2019-08-01'
+    #
+    # startDate = '2018-12-29'
+    # endDate = '2019-01-03'
 
-    # startDate = '2013-01-18'
-    # endDate = '2013-04-29'
     totalTime = time.time()
 
     print('fetching all plays...')
@@ -26,8 +27,8 @@ def AdjustShots(startDate, endDate):
         WHERE (event_type = 'Shot' 
         OR event_type = 'Goal' 
         OR event_type ='Missed Shot') 
-        AND game_date > '%s'
-        AND game_date < '%s'
+        AND game_date >= '%s'
+        AND game_date <= '%s'
         AND period_type != 'SHOOTOUT'
         """ % (startDate, endDate)
 
@@ -89,14 +90,14 @@ def AdjustShots(startDate, endDate):
     allShots_predicted = allShots
     allShots_predicted['pred'] = predictions_1
 
-    allShots_predicted.head()
+    # allShots_predicted.head()
 
     print(time.time() - s)
     print('deleting from db...')
     s = time.time()
     connection = engine.connect()
-    result = connection.execute("""DELETE FROM nhlstats.adjusted_shots WHERE game_date > '%s'
-        AND game_date < '%s'""" % (startDate, endDate))
+    result = connection.execute("""DELETE FROM nhlstats.adjusted_shots WHERE game_date >= '%s'
+        AND game_date <= '%s'""" % (startDate, endDate))
 
     print(time.time() - s)
     print('pushing to db...')
@@ -106,7 +107,7 @@ def AdjustShots(startDate, endDate):
 
     output = io.StringIO()
     # ignore the index
-    allShots.to_csv(output, sep='\t', header=False, index=False)
+    allShots_predicted.to_csv(output, sep='\t', header=False, index=False)
     output.getvalue()
     # jump to start of stream
     output.seek(0)
