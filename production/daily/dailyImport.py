@@ -1,6 +1,7 @@
 import pandas as pd
 import sys
 import time
+import datetime
 from production.fetchData.getGameList import fetch_games_create_csv
 from production.fetchData.importData import fetchGameAndPopulate
 from production.transformData.adjustShots import AdjustShots
@@ -59,7 +60,12 @@ def import_daily(startDate, endDate, gameSeason):
 
 
 
-
+def run_import_today():
+    startDate = (datetime.datetime.now() + datetime.timedelta(days=-2)).strftime('%Y-%m-%d')
+    endDate = (datetime.datetime.now() + datetime.timedelta(days=2)).strftime('%Y-%m-%d')
+    gameSeason = '20182019'
+    print('Running between dates: ', startDate, endDate)
+    import_daily(startDate, endDate, gameSeason)
 
 
 
